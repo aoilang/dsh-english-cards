@@ -37,7 +37,7 @@ dsh-english-cards
 
 ### 其他 Agent
 
-上面的插件是给 DeepSeek Harness 用的。在 Claude Code、ChatGPT/Codex、Cursor、Grok Bot 等 [Agent Plugins](https://agent-plugins.org) 宿主里，请改装便携版 **Aoi Grammar Cards**：它连托管的 MCP 服务 `https://aoilang.com/grammar/mcp`，卡片存到你的免费[小葵（Aoi）](https://aoilang.com)账号。安装说明见 [aoilang/aoi-plugins → plugins/english-cards](https://github.com/aoilang/aoi-plugins/tree/main/plugins/english-cards)。
+上面的插件是给 DeepSeek Harness 用的。在 Claude Code、ChatGPT/Codex、Cursor 等支持 [Agent Plugins](https://agent-plugins.org) Agent里，请安装 [aoilang/aoi-plugins → plugins/english-cards](https://github.com/aoilang/aoi-plugins/tree/main/plugins/english-cards)。
 
 - **Claude Code**：`/plugin marketplace add aoilang/aoi-plugins`，再 `/plugin install aoi-grammar-cards@aoi-plugins`。
 - **ChatGPT 桌面版 / Codex**：`codex plugin marketplace add aoilang/aoi-plugins`，然后在插件目录里装 **English Cards**（或在 Codex 里运行 `codex plugin add aoi-grammar-cards@aoi-plugins`）。
