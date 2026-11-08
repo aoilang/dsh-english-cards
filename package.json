@@ -1,6 +1,6 @@
 {
   "name": "dsh-english-cards",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Collects English corrections into a study deck above the composer and a searchable card library.",
   "license": "MIT",
