@@ -6,11 +6,9 @@
 
 ## 预览
 
-| 收起：输入框上方的卡片叠 | 展开：逐条看更正的词 |
-| --- | --- |
-| ![输入框上方收起状态的卡片叠](docs/screenshots/composer-deck-collapsed.png) | ![展开状态，显示全部更正、规则和例句](docs/screenshots/composer-deck-expanded.png) |
+![输入框上方的卡片叠](docs/screenshots/dsh-composer.png)
 
-![从侧边栏打开的英语卡片库](docs/screenshots/card-library.png)
+![从侧边栏打开的英语卡片库](docs/screenshots/dsh-card-library.png)
 
 ## 功能
 

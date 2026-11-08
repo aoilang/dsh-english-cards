@@ -108,7 +108,7 @@ window.__ModuleLoader__.load({
     }
 
     const CSS = `
-      .elc,.elc-page{--elc-new:#2f8f6f;--elc-good:color-mix(in srgb,#0f8a5f 78%,var(--dsw-alias-label-primary));--elc-bad:color-mix(in srgb,#c0392b 82%,var(--dsw-alias-label-primary));--elc-serif:"Iowan Old Style","Palatino Linotype","Songti SC","Noto Serif CJK SC",ui-serif,Georgia,serif}
+      .elc,.elc-page{--elc-new:#2f8f6f;--elc-good:color-mix(in srgb,#0f8a5f 78%,var(--dsw-alias-label-primary));--elc-bad:color-mix(in srgb,#c0392b 82%,var(--dsw-alias-label-primary));--elc-sync-on:#16a34a;--elc-serif:"Iowan Old Style","Palatino Linotype","Songti SC","Noto Serif CJK SC",ui-serif,Georgia,serif}
       .elc-dock{box-sizing:border-box;width:calc(100% - var(--dsh-composer-side-clearance,0px) - var(--dsh-composer-side-clearance,0px) - var(--dsh-composer-dock-inset,0px) - var(--dsh-composer-dock-inset,0px) - var(--dsh-composer-dock-inset,0px) - var(--dsh-composer-dock-inset,0px));margin:0 auto}
       .elc-stack{position:relative;isolation:isolate;box-sizing:border-box;width:100%;max-width:calc(var(--dsh-composer-card-max-width,748px) - var(--dsh-composer-dock-inset,8px) - var(--dsh-composer-dock-inset,8px) - var(--dsh-composer-dock-inset,8px) - var(--dsh-composer-dock-inset,8px));margin:0 auto;padding-bottom:8px}
       .elc-layer{position:absolute;z-index:0;left:14px;right:14px;bottom:6px;height:14px;border:1px solid var(--dsw-alias-border-l1);border-radius:12px;background:var(--dsw-alias-bg-layer-1);opacity:.9;pointer-events:none;transition:opacity .22s ease,transform .22s ease}
@@ -224,7 +224,7 @@ window.__ModuleLoader__.load({
       .elc-sync-control[data-on="true"]{color:var(--dsw-alias-label-primary)}
       .elc-sync-label{white-space:nowrap;font-weight:500}
       .elc-sync-switch{position:relative;flex:none;width:34px;height:18px;margin:0;padding:0;border:0;border-radius:999px;background:var(--dsw-alias-border-l2);cursor:pointer;transition:background .18s ease}
-      .elc-sync-switch[aria-checked="true"]{background:var(--dsw-alias-brand-primary)}
+      .elc-sync-switch[aria-checked="true"]{background:var(--elc-sync-on)}
       .elc-sync-switch::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.18);transition:transform .18s ease}
       .elc-sync-switch[aria-checked="true"]::after{transform:translateX(16px)}
       .elc-sync-switch:disabled{opacity:.5;cursor:default}

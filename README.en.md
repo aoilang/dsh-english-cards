@@ -6,11 +6,9 @@ While you use DeepSeek Harness, the plugin checks your English grammar automatic
 
 ## Preview
 
-| Collapsed: the live deck above the composer | Expanded: every correction, rule, and example |
-| --- | --- |
-| ![Collapsed deck above the composer](docs/screenshots/composer-deck-collapsed.png) | ![Expanded deck showing corrections, rules, and examples](docs/screenshots/composer-deck-expanded.png) |
+![The live deck above the composer](docs/screenshots/dsh-composer.png)
 
-![The card library, opened from the sidebar](docs/screenshots/card-library.png)
+![The card library, opened from the sidebar](docs/screenshots/dsh-card-library.png)
 
 ## Features
 
