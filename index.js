@@ -7,6 +7,8 @@
  * restored through the persisted projection cache.
  */
 
+import { createSyncService } from './sync.js'
+
 /** Upper bound keeps the checkpointed state and the rendered deck small. */
 export const MAX_CARDS = 100
 
@@ -1153,6 +1155,55 @@ export const englishLearningCardsProjection = {
   },
 }
 
+/** Rebuild the server's `~~removed~~` / `**replacement**` markup from parts. */
+export function markupFromParts(parts) {
+  if (!Array.isArray(parts) || parts.length === 0) return ''
+  let out = ''
+  let open = ''
+  for (const part of parts) {
+    if (part === null || typeof part !== 'object') continue
+    if (typeof part.text !== 'string' || part.text.length === 0) continue
+    const next = part.strike === true ? '~~' : part.strong === true ? '**' : ''
+    if (next !== open) {
+      if (open.length > 0) out += open
+      if (next.length > 0) out += next
+      open = next
+    }
+    out += part.text
+  }
+  if (open.length > 0) out += open
+  return out
+}
+
+/**
+ * Turn one capture's cards into the sentences the Grammar server stores.
+ * The server groups cards under one self-complete corrected sentence, so the
+ * deck's own source groups are the right unit.
+ */
+export function sentencesFromCaptured(cards) {
+  const deckCards = []
+  for (const card of Array.isArray(cards) ? cards : []) {
+    const converted = captureCard(card)
+    if (converted !== null) deckCards.push(converted)
+  }
+  return groupCards(deckCards).map((group) => ({
+    corrected: markupFromParts(group.correctedParts) || group.corrected,
+    source_text: group.sourceText || group.corrected,
+    // The server accepts at most ten cards per sentence and 255-char titles.
+    cards: group.cards
+      .slice(0, 10)
+      .map((card) => ({
+        title: [card.title, card.titleAlt]
+          .filter((part) => typeof part === 'string' && part.length > 0)
+          .join(' · ')
+          .slice(0, 255),
+        rule: typeof card.rule === 'string' ? card.rule : '',
+        example: typeof card.example === 'string' ? card.example : '',
+      }))
+      .filter((card) => card.title.length > 0),
+  })).filter((sentence) => sentence.corrected.length > 0 && sentence.cards.length > 0)
+}
+
 /** Hard dependency: the projection registry must exist for this half to run. */
 export const inject = ['sessionProjections']
 
@@ -1170,12 +1221,51 @@ export function apply(ctx) {
     'dsh-english-cards: session projection',
   )
 
+  // Cloud sync is off until the learner turns it on in the card panel. The
+  // service keeps its own outbox so a capture never waits for the network.
+  const sync = createSyncService()
+  ctx.effect(
+    () => {
+      sync.start()
+      return () => sync.dispose()
+    },
+    'dsh-english-cards: cloud sync',
+  )
+
+  // The panel reads and writes sync settings through this exact host route.
+  // It is authenticated by the browser connection, like every /api request.
+  ctx.inject(['connection'], (connectionCtx) => {
+    try {
+      connectionCtx.connection.fetch.register({
+        path: '/api/dsh-english-cards/sync',
+        methods: ['GET', 'POST'],
+        requestBody: 'buffered',
+        fetch: (request) => sync.handleRequest(request),
+      })
+    } catch (error) {
+      console.warn('dsh-english-cards: sync route unavailable:', error?.message ?? error)
+    }
+  })
+
   // Offer the capture tool wherever the host can register tools. The tool is
   // pure: the model passes the cards it already found, so nothing here calls
   // a model or reads the session.
   ctx.inject(['tools'], (toolCtx) => {
     try {
-      toolCtx.tools.register(captureToolDefinition())
+      const definition = captureToolDefinition()
+      const execute = definition.execute
+      definition.execute = async (args) => {
+        const result = await execute(args)
+        try {
+          if (result?.ok === true && Array.isArray(result.cards) && result.cards.length > 0) {
+            sync.enqueue(sentencesFromCaptured(result.cards))
+          }
+        } catch (error) {
+          console.warn('dsh-english-cards: sync enqueue failed:', error?.message ?? error)
+        }
+        return result
+      }
+      toolCtx.tools.register(definition)
     } catch (error) {
       console.warn('dsh-english-cards: capture tool unavailable:', error?.message ?? error)
     }

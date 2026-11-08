@@ -1,9 +1,25 @@
 {
   "name": "dsh-english-cards",
-  "version": "1.2.0",
-  "private": true,
+  "version": "0.1.0",
   "type": "module",
-  "description": "Collects English corrections into a study deck above the composer and a searchable card library, marking removed words in red strikethrough and replacements in green bold.",
+  "description": "Collects English corrections into a study deck above the composer and a searchable card library.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aoilang/dsh-english-cards.git"
+  },
+  "homepage": "https://github.com/aoilang/dsh-english-cards",
+  "bugs": {
+    "url": "https://github.com/aoilang/dsh-english-cards/issues"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "english",
+    "grammar",
+    "flashcards",
+    "oauth"
+  ],
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
@@ -12,13 +28,16 @@
   },
   "files": [
     "index.js",
+    "sync.js",
     "client.js",
     "cordis.patch.yml",
     "locale/*.json",
     "icon.svg",
     "SKILL.md",
     "README.md",
-    "README.en.md"
+    "README.en.md",
+    "LICENSE",
+    "docs/screenshots/*.png"
   ],
   "dsh": {
     "bundle": {

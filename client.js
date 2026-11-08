@@ -57,6 +57,12 @@ window.__ModuleLoader__.load({
       backToConversation: 'Back to conversation',
       noResults: 'No cards match your search.',
       clearSearch: 'Clear search',
+      syncToAoi: 'Sync to Aoi',
+      syncWaiting: 'Waiting for authorization…',
+      syncAuthLink: 'Open authorization page',
+      syncExpired: 'Disconnected — turn on again',
+      syncError: 'Error',
+      review: 'Review',
     }
 
     const zh = {
@@ -93,6 +99,12 @@ window.__ModuleLoader__.load({
       backToConversation: '回到对话',
       noResults: '没有匹配的卡片。',
       clearSearch: '清除搜索',
+      syncToAoi: '同步到小葵',
+      syncWaiting: '等待授权…',
+      syncAuthLink: '打开授权页面',
+      syncExpired: '已断开，请重新打开',
+      syncError: '错误',
+      review: '复习',
     }
 
     const CSS = `
@@ -206,6 +218,22 @@ window.__ModuleLoader__.load({
       .elc-action{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border:1px solid var(--dsw-alias-border-l1);border-radius:8px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;cursor:pointer}
       .elc-action:hover{background:var(--dsw-alias-bg-layer-2)}
       .elc-action:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}
+      .elc-page-actions{display:flex;align-items:center;justify-content:flex-end;gap:16px;flex:none;flex-wrap:wrap;padding-bottom:2px;-webkit-app-region:no-drag;app-region:no-drag}
+      .elc-page-actions *{-webkit-app-region:no-drag;app-region:no-drag}
+      .elc-sync-control{display:flex;align-items:center;gap:8px;min-width:0;color:var(--dsw-alias-label-secondary);font-size:12px;line-height:18px}
+      .elc-sync-control[data-on="true"]{color:var(--dsw-alias-label-primary)}
+      .elc-sync-label{white-space:nowrap;font-weight:500}
+      .elc-sync-switch{position:relative;flex:none;width:34px;height:18px;margin:0;padding:0;border:0;border-radius:999px;background:var(--dsw-alias-border-l2);cursor:pointer;transition:background .18s ease}
+      .elc-sync-switch[aria-checked="true"]{background:var(--dsw-alias-brand-primary)}
+      .elc-sync-switch::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.18);transition:transform .18s ease}
+      .elc-sync-switch[aria-checked="true"]::after{transform:translateX(16px)}
+      .elc-sync-switch:disabled{opacity:.5;cursor:default}
+      .elc-sync-switch:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}
+      .elc-sync-note{max-width:170px;color:var(--elc-bad);font-size:11px;line-height:15px;text-align:right}
+      .elc-sync-note a{color:inherit;text-decoration:underline}
+      .elc-review-link{display:inline-flex;align-items:center;height:22px;color:var(--dsw-alias-brand-primary);font-size:12px;font-weight:500;text-decoration:none;white-space:nowrap}
+      .elc-review-link:hover{text-decoration:underline}
+      @media (max-width:720px){.elc-page-actions{width:100%;justify-content:space-between}}
       @container (max-width:430px){.elc-hint{display:none}.elc-body{max-height:220px}}
       @media (max-width:640px){.elc-page-toolbar{width:100%}.elc-search{flex:1 1 auto;max-width:none}.elc-stats{margin-left:0}}
       @media (prefers-reduced-motion:reduce){.elc-layer,.elc-chevron,.elc-expand{transition:none}.elc-count,.elc-preview,.elc-expand[data-open="true"] .elc-body,.elc-expand[data-open="true"] .elc-note{animation:none}}
@@ -874,6 +902,237 @@ window.__ModuleLoader__.load({
       return group.cards.some((card) => cardMatches(card, sessionTitle, query))
     }
 
+    /** Rebuild the server's ~~removed~~ / **replacement** markup from parts. */
+    function markupFromParts(parts) {
+      if (!Array.isArray(parts) || parts.length === 0) return ''
+      let out = ''
+      let open = ''
+      for (const part of parts) {
+        if (part === null || typeof part !== 'object') continue
+        if (typeof part.text !== 'string' || part.text.length === 0) continue
+        const next = part.strike === true ? '~~' : part.strong === true ? '**' : ''
+        if (next !== open) {
+          if (open.length > 0) out += open
+          if (next.length > 0) out += next
+          open = next
+        }
+        out += part.text
+      }
+      if (open.length > 0) out += open
+      return out
+    }
+
+    /** Flatten every local session group into one sentence per source text. */
+    function backfillSentences(groups) {
+      const bySource = new Map()
+      // groups arrive newest-first; the server creates rows in send order, so
+      // historical cards must go oldest-first to keep the review timeline.
+      const sessions = [...(Array.isArray(groups) ? groups : [])].reverse()
+      for (const session of sessions) {
+        const cardGroups = [...(Array.isArray(session?.cardGroups) ? session.cardGroups : [])].reverse()
+        for (const group of cardGroups) {
+          const source =
+            typeof group?.sourceText === 'string' && group.sourceText.trim().length > 0
+              ? group.sourceText.trim()
+              : typeof group?.corrected === 'string'
+                ? group.corrected.trim()
+                : ''
+          if (source.length === 0) continue
+          const key = source.toLowerCase()
+          let entry = bySource.get(key)
+          if (entry === undefined) {
+            entry = {
+              corrected: markupFromParts(group.correctedParts) || group.corrected || source,
+              source_text: source,
+              cards: new Map(),
+            }
+            bySource.set(key, entry)
+          }
+          const cards = Array.isArray(group.cards) ? group.cards : []
+          for (const card of cards) {
+            const title = [card?.title, card?.titleAlt]
+              .filter((part) => typeof part === 'string' && part.trim().length > 0)
+              .join(' · ')
+              .slice(0, 255)
+            if (title.length === 0) continue
+            entry.cards.set(title, {
+              title,
+              rule: typeof card.rule === 'string' ? card.rule : '',
+              example: typeof card.example === 'string' ? card.example : '',
+            })
+          }
+        }
+      }
+      return [...bySource.values()]
+        .map((entry) => ({
+          corrected: entry.corrected,
+          source_text: entry.source_text,
+          cards: [...entry.cards.values()].slice(0, 10),
+        }))
+        .filter((sentence) => sentence.corrected.length > 0 && sentence.cards.length > 0)
+    }
+
+    /** Header switch for syncing cards to Aoi. */
+    function SyncControl({ t, groups, ready }) {
+      const [state, setState] = React.useState(null)
+      const [unavailable, setUnavailable] = React.useState(false)
+      const [busy, setBusy] = React.useState(false)
+      const attempted = React.useRef(false)
+      const groupsRef = React.useRef(groups)
+      groupsRef.current = groups
+
+      const load = React.useCallback(async () => {
+        try {
+          const response = await fetch('/api/dsh-english-cards/sync', {
+            headers: { accept: 'application/json' },
+            cache: 'no-store',
+          })
+          if (!response.ok) {
+            setUnavailable(true)
+            return
+          }
+          const data = await response.json()
+          if (data?.ok !== true) {
+            setUnavailable(true)
+            return
+          }
+          setState(data)
+          setUnavailable(false)
+        } catch {
+          setUnavailable(true)
+        }
+      }, [])
+
+      React.useEffect(() => {
+        load()
+      }, [load])
+
+      React.useEffect(() => {
+        const delay = state?.authPending
+          ? 1_500
+          : state?.enabled
+            ? 30_000
+            : unavailable
+              ? 5_000
+              : 0
+        if (delay === 0) return undefined
+        const timer = setInterval(load, delay)
+        return () => clearInterval(timer)
+      }, [state?.authPending, state?.enabled, unavailable, load])
+
+      const post = React.useCallback(async (body) => {
+        setBusy(true)
+        try {
+          const response = await fetch('/api/dsh-english-cards/sync', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(body),
+          })
+          const data = await response.json()
+          if (data?.ok === true) {
+            setState(data)
+            setUnavailable(false)
+            return true
+          }
+          return false
+        } catch {
+          setUnavailable(true)
+          return false
+        } finally {
+          setBusy(false)
+        }
+      }, [])
+
+      React.useEffect(() => {
+        if (attempted.current) return
+        if (ready !== true) return
+        if (!Array.isArray(groups) || groups.length === 0) return
+        if (state?.enabled !== true || state?.authenticated !== true) return
+        if (typeof state?.backfilledAt === 'number' && state.backfilledAt > 0) return
+        attempted.current = true
+        const sentences = backfillSentences(groupsRef.current)
+        if (sentences.length === 0) {
+          attempted.current = false
+          return
+        }
+        void post({ action: 'backfill', sentences }).then((ok) => {
+          if (!ok) attempted.current = false
+        })
+      }, [state, ready, groups?.length, post])
+
+      const toggle = () => {
+        if (busy) return
+        if (state?.authPending) {
+          if (typeof state.authUrl === 'string' && state.authUrl.length > 0) {
+            window.open(state.authUrl, '_blank', 'noopener,noreferrer')
+          }
+          return
+        }
+        if (state === null || state.authenticated !== true || state.needsAuth === true) {
+          void post({ action: 'auth' })
+          return
+        }
+        void post({ action: 'settings', enabled: state.enabled !== true })
+      }
+
+      const on = state?.enabled === true && state.authenticated === true
+      const pending = state?.authPending === true
+      const expired = state?.needsAuth === true && !pending
+      const disabled = busy || pending || state === null
+
+      let note = null
+      if (pending) {
+        note = h(
+          'span',
+          { className: 'elc-sync-note' },
+          t('syncWaiting'),
+          typeof state?.authUrl === 'string' && state.authUrl.length > 0
+            ? h('a', { href: state.authUrl, target: '_blank', rel: 'noreferrer' }, ' · ' + t('syncAuthLink'))
+            : null,
+        )
+      } else if (expired) {
+        note = h('span', { className: 'elc-sync-note' }, t('syncExpired'))
+      } else if (unavailable && state === null) {
+        note = h('span', { className: 'elc-sync-note' }, t('syncError'))
+      }
+
+      return h(
+        'div',
+        { className: 'elc-page-actions' },
+        h(
+          'div',
+          {
+            className: 'elc-sync-control',
+            'data-on': on ? 'true' : 'false',
+            title: typeof state?.lastError === 'string' && state.lastError.length > 0 ? state.lastError : undefined,
+          },
+          h('span', { className: 'elc-sync-label' }, t('syncToAoi')),
+          h('button', {
+            type: 'button',
+            role: 'switch',
+            className: 'elc-sync-switch',
+            'aria-checked': on,
+            'aria-label': t('syncToAoi'),
+            disabled,
+            onClick: toggle,
+          }),
+          note,
+        ),
+        on
+          ? h(
+              'a',
+              {
+                className: 'elc-review-link',
+                href: state.reviewUrl,
+                target: '_blank',
+                rel: 'noreferrer',
+              },
+              t('review'),
+            )
+          : null,
+      )
+    }
+
     /** The English Cards main panel: search, sessions, and every collected card. */
     function EnglishCardsPage(props) {
       const t = typeof props.t === 'function' ? props.t : (key) => en[key] ?? key
@@ -1012,6 +1271,7 @@ window.__ModuleLoader__.load({
             h('h1', { className: 'elc-page-title' }, t('panelTitle')),
             h('p', { className: 'elc-page-intro' }, t('panelIntro')),
           ),
+          h(SyncControl, { t, groups, ready: list.phase !== 'pending' }),
         ),
         total > 0
           ? h(
